@@ -414,9 +414,13 @@ class Attention(nn.Module):
         cos: torch.Tensor,
         sin: torch.Tensor,
     ) -> None:
-        """In-place fused RMSNorm + RoPE on a single Q or K tensor [B, T, H*D] (SEPARATE_QKV cross-attn).
+        """In-place fused full-dim RMSNorm + RoPE on a Q or K tensor.
 
-        The op auto-dispatches by shapes/dtypes (same as `apply_packed_qk_norm_rope`):
+        ``tensor`` is [B, T, H*D], and ``weight`` must be [H*D]. Models with
+        per-head norm weights [D] must use their unfused path until the split
+        fused op supports per-head RMSNorm.
+
+        The op auto-dispatches by shapes/dtypes:
           - cos last dim = head_dim                  → per-token shared cos
           - cos last dim = num_heads * head_dim      → per-token per-head cos (LTX-2 3D RoPE)
           - cos rows < num_tokens                    → kernel broadcasts via cos_seq_per_batch

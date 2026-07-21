@@ -38,7 +38,7 @@ try:
     from _visual_gen_dist_utils import spawn_with_retry
 
     from tensorrt_llm.models.modeling_utils import QuantConfig
-    from tensorrt_llm.visual_gen.args import AttentionConfig, TorchCompileConfig
+    from tensorrt_llm.visual_gen.args import AttentionConfig, ParallelConfig, TorchCompileConfig
 
     MODULES_AVAILABLE = True
 except ImportError:
@@ -145,7 +145,7 @@ _FLUX2_TEST_CONFIG = dict(
 )
 
 
-def _make_model_config(pretrained_dict, ulysses_size=1, backend="VANILLA"):
+def _make_model_config(pretrained_dict, ulysses_size=1, backend="VANILLA", async_ulysses=False):
     """Create DiffusionModelConfig for testing."""
     pretrained_config = SimpleNamespace(**pretrained_dict)
     if ulysses_size > 1 and dist.is_initialized():
@@ -163,6 +163,10 @@ def _make_model_config(pretrained_dict, ulysses_size=1, backend="VANILLA"):
         attention=AttentionConfig(backend=backend),
         visual_gen_mapping=vgm,
         cache=None,
+        parallel=ParallelConfig(
+            ulysses_size=ulysses_size,
+            async_ulysses=async_ulysses,
+        ),
         attention_metadata_state=(
             create_attention_metadata_state() if backend.upper() == "TRTLLM" else None
         ),
@@ -188,6 +192,37 @@ def _stabilize_model_weights(model):
             else:
                 # Bias/1D params: small values
                 p.data.uniform_(-0.01, 0.01)
+
+
+def _pack_async_state_for_sync(async_state, sync_state_keys):
+    """Map async FLUX single-stream to_q/to_k/to_v weights to sync qkv_proj weights."""
+    out = {}
+    for key in sync_state_keys:
+        if key in async_state:
+            out[key] = async_state[key]
+        elif key.endswith(".qkv_proj.weight"):
+            prefix = key[: -len(".qkv_proj.weight")]
+            out[key] = torch.cat(
+                [
+                    async_state[f"{prefix}.to_q.weight"],
+                    async_state[f"{prefix}.to_k.weight"],
+                    async_state[f"{prefix}.to_v.weight"],
+                ],
+                dim=0,
+            )
+        elif key.endswith(".qkv_proj.bias"):
+            prefix = key[: -len(".qkv_proj.bias")]
+            out[key] = torch.cat(
+                [
+                    async_state[f"{prefix}.to_q.bias"],
+                    async_state[f"{prefix}.to_k.bias"],
+                    async_state[f"{prefix}.to_v.bias"],
+                ],
+                dim=0,
+            )
+        else:
+            raise KeyError(f"sync key {key!r} missing from async state")
+    return out
 
 
 # =============================================================================
@@ -309,6 +344,93 @@ def _logic_flux1_ulysses_vs_single_gpu(rank, world_size):
         rtol=1e-2,
         atol=1e-2,
         msg=f"Rank {rank}: FLUX.1 Ulysses output differs from single-GPU reference",
+    )
+
+
+def _logic_flux1_async_vs_sync_parity(rank, world_size):
+    """FLUX.1: async Ulysses single-stream attention matches sync Ulysses."""
+    from tensorrt_llm._torch.visual_gen.models.flux.transformer_flux import FluxTransformer2DModel
+
+    device = torch.device(f"cuda:{rank}")
+    compute_dtype = torch.bfloat16
+
+    batch = 1
+    img_seq = 16
+    txt_seq = 8
+
+    torch.manual_seed(123)
+    async_config = _make_model_config(
+        _FLUX1_TEST_CONFIG,
+        ulysses_size=world_size,
+        async_ulysses=True,
+    )
+    async_model = FluxTransformer2DModel(async_config).to(device).to(compute_dtype)
+    _stabilize_model_weights(async_model)
+    async_state = async_model.state_dict()
+
+    torch.manual_seed(123)
+    sync_config = _make_model_config(_FLUX1_TEST_CONFIG, ulysses_size=world_size)
+    sync_model = FluxTransformer2DModel(sync_config).to(device).to(compute_dtype)
+    sync_model.load_state_dict(
+        _pack_async_state_for_sync(async_state, sync_model.state_dict().keys())
+    )
+
+    assert async_model.single_transformer_blocks[0].attn._use_async_ulysses is True, (
+        "async model did not enable FLUX single-stream async Ulysses"
+    )
+    assert async_model.transformer_blocks[0].attn._use_async_ulysses is False, (
+        "FLUX dual-stream attention unexpectedly enabled async Ulysses"
+    )
+    assert sync_model.single_transformer_blocks[0].attn._use_async_ulysses is False, (
+        "sync model unexpectedly enabled async Ulysses"
+    )
+
+    torch.manual_seed(456)
+    hidden_states = torch.randn(batch, img_seq, 64, device=device, dtype=compute_dtype) * 0.1
+    encoder_hidden_states = (
+        torch.randn(batch, txt_seq, 256, device=device, dtype=compute_dtype) * 0.1
+    )
+    pooled_projections = torch.randn(batch, 128, device=device, dtype=compute_dtype) * 0.1
+    timestep = torch.tensor([0.5], device=device, dtype=compute_dtype)
+    img_ids = torch.randn(img_seq, 3, device=device)
+    txt_ids = torch.randn(txt_seq, 3, device=device)
+
+    with torch.no_grad():
+        sync_output = sync_model(
+            hidden_states=hidden_states,
+            encoder_hidden_states=encoder_hidden_states,
+            pooled_projections=pooled_projections,
+            timestep=timestep,
+            img_ids=img_ids,
+            txt_ids=txt_ids,
+        )
+        async_output = async_model(
+            hidden_states=hidden_states,
+            encoder_hidden_states=encoder_hidden_states,
+            pooled_projections=pooled_projections,
+            timestep=timestep,
+            img_ids=img_ids,
+            txt_ids=txt_ids,
+        )
+
+    async_sample = async_output["sample"]
+    sync_sample = sync_output["sample"]
+    assert async_sample.shape == sync_sample.shape, f"Rank {rank}: output shape mismatch"
+    assert not torch.isnan(async_sample).any(), f"Rank {rank}: NaN in async output"
+    assert not torch.isinf(async_sample).any(), f"Rank {rank}: Inf in async output"
+
+    diff = (async_sample.float() - sync_sample.float()).abs()
+    print(
+        f"\n[FLUX.1 rank={rank}] max_abs_diff={diff.max().item():.3e} "
+        f"mean_abs_diff={diff.mean().item():.3e}"
+    )
+
+    torch.testing.assert_close(
+        async_sample,
+        sync_sample,
+        rtol=1e-2,
+        atol=1e-2,
+        msg=f"Rank {rank}: FLUX.1 async-Ulysses output differs from sync-Ulysses",
     )
 
 
@@ -514,6 +636,10 @@ class TestFlux1Ulysses:
     def test_flux1_ulysses_vs_single_gpu(self):
         """FLUX.1 Ulysses 2-GPU output matches single-GPU reference."""
         run_test_in_distributed(world_size=2, test_fn=_logic_flux1_ulysses_vs_single_gpu)
+
+    def test_flux1_async_vs_sync_parity(self):
+        """FLUX.1 async Ulysses matches sync Ulysses at ws=2."""
+        run_test_in_distributed(world_size=2, test_fn=_logic_flux1_async_vs_sync_parity)
 
 
 class TestFlux2Ulysses:
