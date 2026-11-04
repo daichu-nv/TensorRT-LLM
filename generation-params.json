@@ -1,0 +1,16 @@
+{
+  "height": 256,
+  "width": 256,
+  "num_inference_steps": 20,
+  "guidance_scale": 5.0,
+  "max_sequence_length": 512,
+  "seed": 42,
+  "num_frames": 17,
+  "frame_rate": 16.0,
+  "negative_prompt": null,
+  "image_reference": null,
+  "video_reference": null,
+  "audio_reference": null,
+  "num_images_per_prompt": 1,
+  "extra_params": null
+}

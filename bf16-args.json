@@ -1,0 +1,63 @@
+{
+  "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+  "revision": null,
+  "quant_config": {
+    "quant_algo": null,
+    "kv_cache_quant_algo": null,
+    "group_size": 128,
+    "smoothquant_val": 0.5,
+    "clamp_val": null,
+    "use_meta_recipe": false,
+    "has_zero_point": false,
+    "pre_quant_scale": false,
+    "exclude_modules": null,
+    "mamba_ssm_cache_dtype": null,
+    "mamba_ssm_stochastic_rounding": false,
+    "mamba_ssm_philox_rounds": 10
+  },
+  "compilation_config": {
+    "resolutions": null,
+    "num_frames": null,
+    "skip_warmup": true
+  },
+  "torch_compile_config": {
+    "enable": true,
+    "enable_fullgraph": false,
+    "enable_autotune": true
+  },
+  "cuda_graph_config": {
+    "enable": false
+  },
+  "cpu_offload_config": {
+    "enable": false,
+    "pin_memory": true,
+    "stages": null
+  },
+  "attention_config": {
+    "backend": "TRTLLM",
+    "quant_attention_config": null,
+    "sparse_attention_config": null
+  },
+  "vae_config": {
+    "quant_conv_config": null
+  },
+  "parallel_config": {
+    "parallel_vae_size": 1,
+    "parallel_vae_split_dim": "width",
+    "cfg_size": 1,
+    "ulysses_size": 1,
+    "async_ulysses": false,
+    "ring_size": 1,
+    "attn2d_size": [
+      1,
+      1
+    ],
+    "tp_size": 1,
+    "tp_layout": null,
+    "text_encoder_tp_size": 1
+  },
+  "cache_config": null,
+  "runtime_lora_config": null,
+  "pipeline_config": {},
+  "enable_layerwise_nvtx_marker": false
+}

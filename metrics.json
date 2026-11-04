@@ -1,0 +1,232 @@
+{
+  "runtime_revision": "0b39647f4418c132e553903ce1fc9c80d063acac",
+  "documentation_revision": "708f57bff47dfd0b2d1e7af0febde428e5bd3fa7",
+  "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+  "prompt": "A cat sitting on a sunny windowsill watching birds outside.",
+  "rubin_quality": {
+    "metric": "LPIPS-alex",
+    "comparison": "SM107 FP8 Sage (1,16,1) vs SM107 BF16 TRTLLM",
+    "per_frame": [
+      0.38255536556243896,
+      0.35998234152793884,
+      0.3493748605251312,
+      0.3496386408805847,
+      0.35010826587677,
+      0.3580099046230316,
+      0.36818641424179077,
+      0.37147676944732666,
+      0.36884230375289917,
+      0.36708423495292664,
+      0.39559227228164673,
+      0.3931756019592285,
+      0.3907133936882019,
+      0.3783462643623352,
+      0.36212217807769775,
+      0.3612724542617798,
+      0.3695916533470154
+    ],
+    "mean": 0.3691807599628673,
+    "threshold": 0.05,
+    "frames": 17,
+    "passed": false
+  },
+  "rubin_runtime_observations": {
+    "bf16": {
+      "observed_attention_instances": 30,
+      "q_dtypes": [
+        "torch.bfloat16"
+      ],
+      "recipes": [
+        null
+      ]
+    },
+    "fp8": {
+      "observed_attention_instances": 30,
+      "q_dtypes": [
+        "torch.bfloat16"
+      ],
+      "recipes": [
+        [
+          "fp8",
+          "fp8",
+          1,
+          16,
+          1
+        ]
+      ]
+    }
+  },
+  "software": {
+    "torch": "2.14.0a0+b2c75dd062.nv26.09",
+    "tensorrt_llm": "1.4.0rc3"
+  },
+  "gb300_quality": {
+    "metric": "LPIPS-alex",
+    "comparison": "SM103 FP8 Sage (1,16,1) vs SM103 BF16 TRTLLM",
+    "per_frame": [
+      0.3516835570335388,
+      0.3380802869796753,
+      0.3181712031364441,
+      0.3163418173789978,
+      0.3072262108325958,
+      0.31163012981414795,
+      0.31930437684059143,
+      0.31859368085861206,
+      0.31631362438201904,
+      0.31162911653518677,
+      0.3182730972766876,
+      0.32283416390419006,
+      0.3164801597595215,
+      0.3073795437812805,
+      0.31308770179748535,
+      0.3193226456642151,
+      0.32863476872444153
+    ],
+    "mean": 0.3197050638058606,
+    "threshold": 0.05,
+    "frames": 17,
+    "passed": false
+  },
+  "fp8_cross_device": {
+    "metric": "LPIPS-alex",
+    "comparison": "SM107 FP8 Sage (1,16,1) vs SM103 FP8 Sage (1,16,1)",
+    "frames": 17,
+    "per_frame": [
+      0.39313775300979614,
+      0.38008391857147217,
+      0.3634408116340637,
+      0.3577042818069458,
+      0.350586861371994,
+      0.35193467140197754,
+      0.3601086735725403,
+      0.35569506883621216,
+      0.3512818515300751,
+      0.34989213943481445,
+      0.36195865273475647,
+      0.35654282569885254,
+      0.3585372865200043,
+      0.3573799431324005,
+      0.3571736514568329,
+      0.36123502254486084,
+      0.3615264296531677
+    ],
+    "mean": 0.36048352017122154,
+    "threshold": 0.05,
+    "passed": false
+  },
+  "bf16_cross_device": {
+    "metric": "LPIPS-alex",
+    "comparison": "SM107 BF16 vs SM103 BF16",
+    "frames": 17,
+    "per_frame": [
+      0.19641539454460144,
+      0.1909225881099701,
+      0.18167895078659058,
+      0.18192097544670105,
+      0.18238143622875214,
+      0.1897355020046234,
+      0.18929919600486755,
+      0.18106421828269958,
+      0.18127340078353882,
+      0.18326708674430847,
+      0.195488840341568,
+      0.19791847467422485,
+      0.19635789096355438,
+      0.21494290232658386,
+      0.21567928791046143,
+      0.21863996982574463,
+      0.2363300323486328
+    ],
+    "mean": 0.19607742043102488,
+    "threshold": 0.05,
+    "passed": false
+  },
+  "gb300_bf16_repeat": {
+    "metric": "LPIPS-alex",
+    "comparison": "SM103 BF16 repeat, same seed and parameters",
+    "per_frame": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "mean": 0.0,
+    "threshold": 0.05,
+    "passed": true
+  },
+  "gb300_runtime_observations": {
+    "bf16": {
+      "observed_attention_instances": 30,
+      "q_dtypes": [
+        "torch.bfloat16"
+      ],
+      "recipes": [
+        null
+      ]
+    },
+    "fp8": {
+      "observed_attention_instances": 30,
+      "q_dtypes": [
+        "torch.bfloat16"
+      ],
+      "recipes": [
+        [
+          "fp8",
+          "fp8",
+          1,
+          16,
+          1
+        ]
+      ]
+    }
+  },
+  "gb300_bf16_repeat_byte_identical": true,
+  "gb300_tests": {
+    "cpu": {
+      "tests": 142,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "time": 3.571
+    },
+    "schema_tests": {
+      "tests": 148,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "time": 3.305
+    },
+    "single": {
+      "tests": 2593,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1296,
+      "time": 18.415
+    },
+    "perf_quick": {
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 12,
+      "time": 10.916
+    }
+  },
+  "gb300_kernel_cosine": {
+    "cases": 1296,
+    "minimum": 0.999919
+  },
+  "generated_serving_schemas_unchanged": true
+}
